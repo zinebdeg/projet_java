@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  mysql-user:
+    image: mysql:8.0
+    container_name: mysql-user
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: userdb
+    ports:
+      - "3306:3306"
+    networks:
+      - event-network
+
+  mysql-event:
+    image: mysql:8.0
+    container_name: mysql-event
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: eventdb
+    ports:
+      - "3307:3306"
+    networks:
+      - event-network
+
+  mysql-reservation:
+    image: mysql:8.0
+    container_name: mysql-reservation
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: reservationdb
+    ports:
+      - "3308:3306"
+    networks:
+      - event-network
+
+  mysql-payment:
+    image: mysql:8.0
+    container_name: mysql-payment
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: paymentdb
+    ports:
+      - "3309:3306"
+    networks:
+      - event-network
+
+  eureka-server:
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - event-network
+
+  config-server:
+    build:
+      context: ./config-server
+      dockerfile: Dockerfile
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    depends_on:
+      - eureka-server
+    networks:
+      - event-network
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+    networks:
+      - event-network
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - eureka-server
+      - mysql-user
+    networks:
+      - event-network
+
+  event-service:
+    build:
+      context: ./event-service
+      dockerfile: Dockerfile
+    container_name: event-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - eureka-server
+      - mysql-event
+    networks:
+      - event-network
+
+  reservation-service:
+    build:
+      context: ./reservation-service
+      dockerfile: Dockerfile
+    container_name: reservation-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - eureka-server
+      - mysql-reservation
+      - event-service
+    networks:
+      - event-network
+
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    container_name: payment-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - eureka-server
+      - mysql-payment
+      - reservation-service
+    networks:
+      - event-network
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      - eureka-server
+    networks:
+      - event-network
+
+networks:
+  event-network:
+    driver: bridge
+
+
+
+
+
+
