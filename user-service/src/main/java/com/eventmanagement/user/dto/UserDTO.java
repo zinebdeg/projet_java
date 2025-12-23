@@ -1,19 +1,19 @@
 package com.eventmanagement.user.dto;
 
 import com.eventmanagement.user.model.Role;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.NotBlank;
 
 public class UserDTO {
     private Long id;
-    
+
     @NotBlank
     private String username;
-    
+
     @NotBlank
     @Email
     private String email;
-    
+
     private Role role;
 
     public UserDTO() {}
@@ -58,9 +58,3 @@ public class UserDTO {
         this.role = role;
     }
 }
-
-
-
-
-
-

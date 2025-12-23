@@ -4,14 +4,21 @@ server:
 spring:
   application:
     name: event-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/event_platform
+    username: postgres
+    password: zineb123
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
 
+# AJOUTEZ CES LIGNES POUR DÉSACTIVER EUREKA :
 eureka:
   client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-  instance:
-    hostname: localhost
-    prefer-ip-address: true
+    enabled: false
 
 management:
   endpoints:

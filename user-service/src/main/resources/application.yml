@@ -4,11 +4,22 @@ server:
 spring:
   application:
     name: user-service
+  # CONFIGURATION POSTGRESQL - À MODIFIER AVEC VOS INFOS
+  datasource:
+    url: jdbc:postgresql://localhost:5432/event_platform
+    username: postgres
+    password: zineb123
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update  # Crée les tables automatiquement
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
 
+# DÉSACTIVEZ EUREKA (décommentez ces lignes)
 eureka:
   client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-  instance:
-    hostname: localhost
-    prefer-ip-address: true
+    enabled: false
