@@ -1,16 +1,12 @@
-package com.eventmanagement.event.model;
+package com.eventmanagement.event.service;
 
-import javax.persistence.*;
+import com.eventmanagement.event.model.EventStatus;
 //import javax.validation.constraints.NotBlank;
 //import javax.validation.constraints.NotNull;
 //import javax.validation.constraints.Positive;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "events")
-public class Event {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class EventDTO {
     private Long id;
 
     // @NotBlank
@@ -36,15 +32,16 @@ public class Event {
     // @NotNull
     private Long organizerId;
 
-    private String participants; // JSON string or comma-separated for simplicity
+    private String participants;
 
-    @Enumerated(EnumType.STRING)
-    private EventStatus status = EventStatus.ACTIVE;
+    private EventStatus status;
 
-    public Event() {}
+    public EventDTO() {}
 
-    public Event(String title, String description, LocalDateTime eventDate, String location,
-                 Integer totalTickets, Double ticketPrice, Long organizerId, String participants) {
+    public EventDTO(Long id, String title, String description, LocalDateTime eventDate,
+                    String location, Integer totalTickets, Double ticketPrice,
+                    Long organizerId, String participants, EventStatus status) {
+        this.id = id;
         this.title = title;
         this.description = description;
         this.eventDate = eventDate;
@@ -53,6 +50,7 @@ public class Event {
         this.ticketPrice = ticketPrice;
         this.organizerId = organizerId;
         this.participants = participants;
+        this.status = status;
     }
 
     // ... (les getters et setters restent inchangés)

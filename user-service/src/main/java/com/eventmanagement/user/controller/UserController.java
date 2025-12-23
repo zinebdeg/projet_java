@@ -1,83 +1,58 @@
 package com.eventmanagement.user.controller;
 
-import com.eventmanagement.user.dto.AuthRequest;
-import com.eventmanagement.user.dto.RegisterRequest;
-import com.eventmanagement.user.dto.UserDTO;
-import com.eventmanagement.user.service.UserService;
-import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import java.util.*;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api/users")
 public class UserController {
-    
-    @Autowired
-    private UserService userService;
 
-    @PostMapping("/register")
-    public ResponseEntity<UserDTO> register(@Valid @RequestBody RegisterRequest request) {
-        try {
-            UserDTO user = userService.register(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(user);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
+    private Map<Long, Map<String, Object>> users = new HashMap<>();
+    private long currentId = 3L;
+
+    public UserController() {
+        users.put(1L, Map.of(
+                "id", 1L,
+                "name", "John Doe",
+                "email", "john@example.com",
+                "role", "USER"
+        ));
+        users.put(2L, Map.of(
+                "id", 2L,
+                "name", "Jane Smith",
+                "email", "jane@example.com",
+                "role", "ORGANIZER"
+        ));
     }
 
-    @PostMapping("/authenticate")
-    public ResponseEntity<UserDTO> authenticate(@Valid @RequestBody AuthRequest request) {
-        try {
-            UserDTO user = userService.authenticate(request.getUsername(), request.getPassword());
-            return ResponseEntity.ok(user);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+    @GetMapping("/health")
+    public String health() {
+        return "User service is up and running!";
+    }
+
+    @GetMapping("/")
+    public List<Map<String, Object>> getAllUsers() {
+        return new ArrayList<>(users.values());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
-        try {
-            UserDTO user = userService.getUserById(id);
-            return ResponseEntity.ok(user);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    public Map<String, Object> getUserById(@PathVariable Long id) {
+        if (users.containsKey(id)) {
+            return users.get(id);
         }
+        return Map.of("error", "User not found", "id", id);
     }
 
-    @GetMapping("/username/{username}")
-    public ResponseEntity<UserDTO> getUserByUsername(@PathVariable String username) {
-        try {
-            UserDTO user = userService.getUserByUsername(username);
-            return ResponseEntity.ok(user);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-    }
-
-    @GetMapping
-    public ResponseEntity<List<UserDTO>> getAllUsers() {
-        List<UserDTO> users = userService.getAllUsers();
-        return ResponseEntity.ok(users);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        try {
-            userService.deleteUser(id);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
+    @PostMapping("/")
+    public Map<String, Object> createUser(@RequestBody Map<String, Object> userRequest) {
+        long id = currentId++;
+        Map<String, Object> newUser = new HashMap<>(userRequest);
+        newUser.put("id", id);
+        users.put(id, newUser);
+        return Map.of(
+                "message", "User created successfully",
+                "id", id,
+                "user", newUser
+        );
     }
 }
-
-
-
-
-
-
