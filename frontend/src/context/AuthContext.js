@@ -13,16 +13,23 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Vérifier si l'utilisateur est déjà connecté (depuis localStorage)
+    // Vérifier l'authentification au démarrage
+    const token = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+
+    if (token && savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
       } catch (error) {
+        console.error('Error parsing saved user:', error);
         localStorage.removeItem('user');
+        localStorage.removeItem('token');
       }
     }
     setLoading(false);
@@ -31,46 +38,69 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     try {
       const userData = await api.authenticate(username, password);
+
+      // Sauvegarder les données
       setUser(userData);
+      setIsAuthenticated(true);
       localStorage.setItem('user', JSON.stringify(userData));
+
       return { success: true };
     } catch (error) {
-      return { success: false, error: 'Nom d\'utilisateur ou mot de passe incorrect' };
+      console.error('Login error:', error);
+      return {
+        success: false,
+        error: error.message || 'Nom d\'utilisateur ou mot de passe incorrect'
+      };
     }
   };
 
   const register = async (userData) => {
     try {
       const newUser = await api.register(userData);
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
+
+      // Après inscription, on peut auto-login
+      if (userData.password) {
+        const loginResult = await login(userData.username, userData.password);
+        return loginResult;
+      }
+
       return { success: true };
     } catch (error) {
       console.error('Registration error:', error);
-      // Afficher le message d'erreur exact du backend si disponible
-      const errorMessage = error.message || error.status === 400 
-        ? 'Nom d\'utilisateur ou email déjà utilisé, ou informations invalides.' 
-        : error.status === 0 
-        ? 'Impossible de se connecter au serveur. Vérifiez que le backend est démarré.'
-        : 'Erreur lors de l\'inscription. Vérifiez vos informations.';
-      return { success: false, error: errorMessage };
+
+      let errorMessage = error.message;
+      if (error.message.includes('400') || error.message.includes('déjà utilisé')) {
+        errorMessage = 'Nom d\'utilisateur ou email déjà utilisé, ou informations invalides.';
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('0')) {
+        errorMessage = 'Impossible de se connecter au serveur. Vérifiez que le backend est démarré.';
+      }
+
+      return {
+        success: false,
+        error: errorMessage || 'Erreur lors de l\'inscription. Vérifiez vos informations.'
+      };
     }
   };
 
   const logout = () => {
     setUser(null);
+    setIsAuthenticated(false);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
   };
 
   const value = {
     user,
+    isAuthenticated,
+    loading,
     login,
     register,
-    logout,
-    isAuthenticated: !!user,
-    loading,
+    logout
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+      <AuthContext.Provider value={value}>
+        {children}
+      </AuthContext.Provider>
+  );
 };
-

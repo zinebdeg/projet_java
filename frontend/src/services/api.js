@@ -1,135 +1,140 @@
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE = "http://localhost:8080";
 
-class ApiService {
-  async request(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`;
-    const config = {
+export const userAPI = {
+  login: async (username, password) => {
+    const response = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Échec de la connexion');
+    }
+
+    return response.json();
+  },
+
+  register: async (userData) => {
+    const response = await fetch(`${API_BASE}/api/users/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Échec de l\'inscription');
+    }
+
+    return response.json();
+  },
+
+  getProfile: async () => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/api/users/profile`, {
       headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
+        'Authorization': token,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    return response.json();
+  }
+};
+
+export const eventAPI = {
+  getAllEvents: async () => {
+    const response = await fetch(`${API_BASE}/api/events`);
+    return response.json();
+  },
+
+  getEventById: async (id) => {
+    const response = await fetch(`${API_BASE}/api/events/${id}`);
+    return response.json();
+  },
+
+  createEvent: async (eventData) => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/api/events`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json'
       },
-      ...options,
-    };
+      body: JSON.stringify(eventData)
+    });
 
-    if (config.body && typeof config.body === 'object') {
-      config.body = JSON.stringify(config.body);
+    return response.json();
+  }
+};
+
+// ======================
+// EXPORT PAR DÉFAUT POUR COMPATIBILITÉ
+// ======================
+
+const api = {
+  // Méthodes d'authentification
+  authenticate: async (username, password) => {
+    const response = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Échec de la connexion');
     }
 
-    try {
-      const response = await fetch(url, config);
-      if (!response.ok) {
-        // Essayer de lire le message d'erreur du backend
-        let errorMessage = `HTTP error! status: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          if (errorData.message) {
-            errorMessage = errorData.message;
-          }
-        } catch (e) {
-          // Si pas de JSON, utiliser le message par défaut
-        }
-        const error = new Error(errorMessage);
-        error.status = response.status;
-        throw error;
-      }
-      if (response.status === 204) {
-        return null;
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
+    const data = await response.json();
+    // Sauvegarder le token si présent
+    if (data.token) {
+      localStorage.setItem('token', data.token);
     }
-  }
+    return data;
+  },
 
-  // User APIs
-  async register(userData) {
-    return this.request('/users/register', {
+  register: async (userData) => {
+    const response = await fetch(`${API_BASE}/api/users/register`, {
       method: 'POST',
-      body: userData,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
     });
-  }
 
-  async authenticate(username, password) {
-    return this.request('/users/authenticate', {
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Échec de l\'inscription');
+    }
+
+    return response.json();
+  },
+
+  // Méthodes d'événements
+  getEvents: async () => {
+    const response = await fetch(`${API_BASE}/api/events`);
+    return response.json();
+  },
+
+  getEvent: async (id) => {
+    const response = await fetch(`${API_BASE}/api/events/${id}`);
+    return response.json();
+  },
+
+  createEvent: async (eventData) => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/api/events`, {
       method: 'POST',
-      body: { username, password },
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(eventData)
     });
+
+    return response.json();
   }
+};
 
-  async getUserById(id) {
-    return this.request(`/users/${id}`);
-  }
-
-  // Event APIs
-  async getEvents() {
-    return this.request('/events');
-  }
-
-  async getEventById(id) {
-    return this.request(`/events/${id}`);
-  }
-
-  async createEvent(eventData) {
-    return this.request('/events', {
-      method: 'POST',
-      body: eventData,
-    });
-  }
-
-  async updateEvent(id, eventData) {
-    return this.request(`/events/${id}`, {
-      method: 'PUT',
-      body: eventData,
-    });
-  }
-
-  async deleteEvent(id) {
-    return this.request(`/events/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // Reservation APIs
-  async createReservation(reservationData) {
-    return this.request('/reservations', {
-      method: 'POST',
-      body: reservationData,
-    });
-  }
-
-  async getReservationById(id) {
-    return this.request(`/reservations/${id}`);
-  }
-
-  async getReservationsByUser(userId) {
-    return this.request(`/reservations/user/${userId}`);
-  }
-
-  async confirmReservation(id) {
-    return this.request(`/reservations/${id}/confirm`, {
-      method: 'PUT',
-    });
-  }
-
-  async cancelReservation(id) {
-    return this.request(`/reservations/${id}/cancel`, {
-      method: 'PUT',
-    });
-  }
-
-  // Payment APIs
-  async processPayment(paymentData) {
-    return this.request('/payments', {
-      method: 'POST',
-      body: paymentData,
-    });
-  }
-
-  async getPaymentsByUser(userId) {
-    return this.request(`/payments/user/${userId}`);
-  }
-}
-
-export default new ApiService();
-
+export default api;
