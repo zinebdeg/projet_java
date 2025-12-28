@@ -1,18 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import './EventDetail.css';
 
 const EventDetail = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [numberOfTickets, setNumberOfTickets] = useState(1);
-  const [reserving, setReserving] = useState(false);
+  const [tickets, setTickets] = useState(1);
 
   useEffect(() => {
     loadEvent();
@@ -21,136 +17,192 @@ const EventDetail = () => {
   const loadEvent = async () => {
     try {
       setLoading(true);
-      const data = await api.getEventById(id);
+      const data = await api.getEvent(id);
       setEvent(data);
       setError('');
     } catch (err) {
-      setError('Erreur lors du chargement de l\'événement');
-      console.error(err);
+      setError('Événement non trouvé');
+      console.error('Error loading event:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleReservation = async () => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-
-    if (numberOfTickets < 1 || numberOfTickets > 4) {
-      setError('Vous pouvez réserver entre 1 et 4 tickets');
-      return;
-    }
-
     try {
-      setReserving(true);
-      setError('');
-      const reservation = await api.createReservation({
-        eventId: parseInt(id),
-        userId: user.id,
-        numberOfTickets: numberOfTickets,
-      });
-      navigate(`/reservation/${reservation.id}`);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Veuillez vous connecter pour réserver');
+        return;
+      }
+
+      const reservationData = {
+        eventId: event.id,
+        userId: 1, // À remplacer par l'ID de l'utilisateur connecté
+        tickets: tickets,
+        totalPrice: event.price * tickets
+      };
+
+      // Ici, vous appelleriez l'API de réservation
+      // Pour l'instant, simulation
+      alert(`Réservation de ${tickets} billet(s) pour "${event.title}" confirmée !`);
+
     } catch (err) {
-      setError('Erreur lors de la réservation. Vérifiez la disponibilité.');
-      console.error(err);
-    } finally {
-      setReserving(false);
+      console.error('Reservation error:', err);
+      alert('Erreur lors de la réservation');
     }
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Date non définie';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (e) {
+      return dateString;
+    }
   };
 
   if (loading) {
-    return <div className="loading">Chargement...</div>;
+    return (
+        <div className="loading-container">
+          <div className="loading">Chargement de l'événement...</div>
+        </div>
+    );
   }
 
-  if (!event) {
-    return <div className="error-message">Événement non trouvé</div>;
+  if (error || !event) {
+    return (
+        <div className="error-container">
+          <div className="error-message">
+            <h2>Événement non trouvé</h2>
+            <p>L'événement que vous recherchez n'existe pas ou a été supprimé.</p>
+            <Link to="/events" className="back-button">
+              ← Retour aux événements
+            </Link>
+          </div>
+        </div>
+    );
   }
 
   return (
-    <div className="event-detail-container">
-      <button onClick={() => navigate(-1)} className="back-button">
-        ← Retour
-      </button>
-      <div className="event-detail-card">
+      <div className="event-detail-container">
         <div className="event-detail-header">
+          <Link to="/events" className="back-link">
+            ← Retour aux événements
+          </Link>
           <h1>{event.title}</h1>
-          <span className={`event-status status-${event.status?.toLowerCase()}`}>
-            {event.status || 'ACTIVE'}
-          </span>
         </div>
-        <p className="event-description">{event.description}</p>
-        <div className="event-info-grid">
-          <div className="info-item">
-            <span className="info-label">📅 Date et heure</span>
-            <span className="info-value">{formatDate(event.eventDate)}</span>
+
+        <div className="event-detail-content">
+          <div className="event-detail-left">
+            <div className="event-image">
+              {event.image ? (
+                  <img src={event.image} alt={event.title} />
+              ) : (
+                  <div className="placeholder-image">
+                    <span>🎭</span>
+                  </div>
+              )}
+            </div>
+
+            <div className="event-description-box">
+              <h3>Description</h3>
+              <p>{event.description || 'Aucune description disponible.'}</p>
+            </div>
           </div>
-          <div className="info-item">
-            <span className="info-label">📍 Lieu</span>
-            <span className="info-value">{event.location}</span>
-          </div>
-          <div className="info-item">
-            <span className="info-label">💰 Prix par ticket</span>
-            <span className="info-value price">{event.ticketPrice?.toFixed(2)} €</span>
-          </div>
-          <div className="info-item">
-            <span className="info-label">🎟️ Places disponibles</span>
-            <span className="info-value">{event.totalTickets || 0}</span>
-          </div>
-        </div>
-        {error && <div className="error-message">{error}</div>}
-        {isAuthenticated && (
-          <div className="reservation-section">
-            <h2>Réserver des tickets</h2>
-            <div className="ticket-selector">
-              <label htmlFor="tickets">Nombre de tickets (max 4):</label>
-              <input
-                type="number"
-                id="tickets"
-                min="1"
-                max="4"
-                value={numberOfTickets}
-                onChange={(e) => setNumberOfTickets(parseInt(e.target.value) || 1)}
-                className="ticket-input"
-              />
-              <div className="total-price">
-                Total: <strong>{(event.ticketPrice * numberOfTickets).toFixed(2)} €</strong>
+
+          <div className="event-detail-right">
+            <div className="event-info-card">
+              <h3>Détails de l'événement</h3>
+
+              <div className="info-item">
+                <span className="info-label">📅 Date et heure :</span>
+                <span className="info-value">{formatDate(event.date)}</span>
+              </div>
+
+              <div className="info-item">
+                <span className="info-label">📍 Lieu :</span>
+                <span className="info-value">{event.location || 'Non spécifié'}</span>
+              </div>
+
+              <div className="info-item">
+                <span className="info-label">💰 Prix :</span>
+                <span className="info-value price">{event.price ? `${event.price.toFixed(2)} €` : 'Gratuit'}</span>
+              </div>
+
+              <div className="info-item">
+                <span className="info-label">🎟️ Places disponibles :</span>
+                <span className="info-value">{event.availableTickets || 0}</span>
+              </div>
+
+              <div className="info-item">
+                <span className="info-label">📊 Catégorie :</span>
+                <span className="info-value">{event.category || 'Général'}</span>
+              </div>
+
+              {/* Section réservation */}
+              <div className="reservation-section">
+                <h3>Réserver des billets</h3>
+
+                <div className="ticket-selector">
+                  <label>Nombre de billets :</label>
+                  <div className="ticket-controls">
+                    <button
+                        onClick={() => setTickets(Math.max(1, tickets - 1))}
+                        disabled={tickets <= 1}
+                    >
+                      −
+                    </button>
+                    <span className="ticket-count">{tickets}</span>
+                    <button
+                        onClick={() => setTickets(tickets + 1)}
+                        disabled={tickets >= (event.availableTickets || 5)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <div className="price-summary">
+                  <div className="price-item">
+                    <span>{tickets} × {event.price ? `${event.price.toFixed(2)} €` : 'Gratuit'}</span>
+                    <span>{event.price ? (event.price * tickets).toFixed(2) : '0.00'} €</span>
+                  </div>
+                  <div className="price-total">
+                    <span>Total :</span>
+                    <span className="total-amount">
+                    {event.price ? (event.price * tickets).toFixed(2) : '0.00'} €
+                  </span>
+                  </div>
+                </div>
+
+                <button
+                    className="reserve-button"
+                    onClick={handleReservation}
+                    disabled={!event.availableTickets || event.availableTickets <= 0}
+                >
+                  {!event.availableTickets || event.availableTickets <= 0
+                      ? 'COMPLET'
+                      : `Réserver ${tickets} billet${tickets > 1 ? 's' : ''}`}
+                </button>
+
+                {(!event.availableTickets || event.availableTickets <= 0) && (
+                    <p className="sold-out-message">Désolé, cet événement est complet.</p>
+                )}
               </div>
             </div>
-            <button
-              onClick={handleReservation}
-              disabled={reserving || numberOfTickets < 1 || numberOfTickets > 4}
-              className="reserve-button"
-            >
-              {reserving ? 'Réservation...' : 'Réserver'}
-            </button>
           </div>
-        )}
-        {!isAuthenticated && (
-          <div className="login-prompt">
-            <p>Vous devez être connecté pour réserver des tickets.</p>
-            <button onClick={() => navigate('/login')} className="login-button">
-              Se connecter
-            </button>
-          </div>
-        )}
+        </div>
       </div>
-    </div>
   );
 };
 
 export default EventDetail;
-
